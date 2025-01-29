@@ -1,1 +1,7 @@
+# virtual environment
 venv
+
+# generated files
+/src/*.json
+/src/*.pem
+/src/*.bin

@@ -183,8 +183,6 @@ def rep_create_session(state, organization, username, password, credentials_file
         private_key = serialization.load_pem_private_key(private_key_bytes, password=password.encode(), backend=default_backend())
         public_key_pem = keys_data["public_key"]
 
-        print(private_key)
-
         repo_public_key_pem = state["REP_PUB_KEY"]
 
         # Challenge
@@ -203,36 +201,23 @@ def rep_create_session(state, organization, username, password, credentials_file
             "timestamp": time.time()
         }
 
-        encrypted_payload = hybrid_encrypt(payload, repo_public_key_pem)
+        endpoint = "/session/create"
+        decrypted_response = send_request(endpoint, payload, state, private_key, repo_public_key_pem)
 
-        response = requests.post(f"http://{state['REP_ADDRESS']}/session/create", json=encrypted_payload)
-        if response.status_code == 201:
-            encrypted_response = response.json()["encrypted_response"]
+        with open(session_file, 'w') as f:
+            session_and_credentials = decrypted_response["response"]
+            session_and_credentials["public_key"] = public_key_pem
 
-            decrypted_response = hybrid_decrypt(encrypted_response, private_key)
-            repo_public_key = serialization.load_pem_public_key(repo_public_key_pem.encode(), backend=default_backend())
-            signature = base64.b64decode(decrypted_response["signature"])
-            if not verify_signature(REPO_MESSAGE.encode(), signature, repo_public_key):
-                logger.error("Ligacao comprometida!")
-                exit(1)
+            private_key_bytes = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            session_and_credentials["private_key"] = base64.b64encode(private_key_bytes).decode('utf-8')
 
-            with open(session_file, 'w') as f:
-                session_and_credentials = decrypted_response["response"]
-                session_and_credentials["public_key"] = public_key_pem
+            json.dump(session_and_credentials, f, indent=4)
 
-                private_key_bytes = private_key.private_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PrivateFormat.TraditionalOpenSSL,
-                    encryption_algorithm=serialization.NoEncryption()
-                )
-                session_and_credentials["private_key"] = base64.b64encode(private_key_bytes).decode('utf-8')
-
-                json.dump(session_and_credentials, f, indent=4)
-
-            print(f"Sessão criada e salva em: {session_file}")
-        else:
-            print(f"Erro ao criar sessão: {response.status_code} - {response.text}")
-            sys.exit(1)
+        print(f"Sessão criada e salva em: {session_file}")
 
     except Exception as e:
         print(f"Erro: {e}")
@@ -247,10 +232,11 @@ def rep_get_file(state, file_handle, output_file=None):
         repo_public_key_pem = state["REP_PUB_KEY"]
 
         payload = {"file_handle": file_handle, "timestamp": time.time()}
-        encrypted_payload = hybrid_encrypt(payload, repo_public_key_pem)
 
-        # Enviar a solicitação para download
-        response = requests.post(f"http://{state['REP_ADDRESS']}/file/download", json=encrypted_payload)
+        endpoint = "/file/download"
+        private_key = None
+        response = send_request(endpoint, payload, state, private_key, repo_public_key_pem)
+
         if response.status_code == 200:
             file_content = response.json().get("file")
             if not file_content:
@@ -281,53 +267,11 @@ def rep_get_file(state, file_handle, output_file=None):
         print(f"Erro: {e}")
         sys.exit(1)
 
-
-
-
-# def rep_list_subjects(state, session_file, username=None):
-#     try:
-#         with open(session_file, "r") as f:
-#             session_data = json.load(f)
-#             encrypted_session = session_data.get("encrypted_session")
-#             if not encrypted_session:
-#                 print("Erro: Sessão criptografada ausente no arquivo.")
-#                 sys.exit(1)
-
-#         response = requests.get(f"http://{state['REP_ADDRESS']}/repository/public_key")
-#         if response.status_code != 200:
-#             print(f"Erro ao obter a chave pública do servidor: {response.text}")
-#             sys.exit(1)
-#         repo_public_key_pem = response.json()["public_key"]
-
-#         payload = {
-#             "encrypted_session": encrypted_session,
-#             "username": username,
-#             "timestamp": time.time()
-#         }
-
-#         encrypted_payload = hybrid_encrypt(payload, repo_public_key_pem)
-#         response = requests.post(f"http://{state['REP_ADDRESS']}/subject/list", json=encrypted_payload)
-#         if response.status_code == 200:
-#             subjects = response.json()
-#             print("Lista de sujeitos:")
-#             print(json.dumps(subjects, indent=4))
-#         else:
-#             print(f"Erro ao listar sujeitos: {response.status_code} - {response.text}")
-#             sys.exit(1)
-
-#     except Exception as e:
-#         print(f"Erro inesperado: {e}")
-#         sys.exit(1)
-
-
 def rep_add_subject(state, session_file, username, name, email, credentials_file):
     try:
         session_data, encrypted_session = load_session(session_file)
-
         private_key = load_private_key(session_data)
-
         public_key_pem = session_data["public_key"]
-
         repo_public_key_pem = state["REP_PUB_KEY"]
 
         challenge_to_repository(repo_public_key_pem, state, private_key, public_key_pem, logger)
@@ -352,22 +296,10 @@ def rep_add_subject(state, session_file, username, name, email, credentials_file
             "timestamp": time.time()
         }
 
-        encrypted_payload = hybrid_encrypt(payload, repo_public_key_pem)
-        response = requests.post(f"http://{state['REP_ADDRESS']}/subject/add", json=encrypted_payload)
+        endpoint = "/subject/add"
+        send_request(endpoint, payload, state, private_key, repo_public_key_pem)
 
-        if response.status_code == 201:
-            encrypted_response = response.json()["encrypted_response"]
-
-            decrypted_response = hybrid_decrypt(encrypted_response, private_key)
-            repo_public_key = serialization.load_pem_public_key(repo_public_key_pem.encode(), backend=default_backend())
-            signature = base64.b64decode(decrypted_response["signature"])
-            if not verify_signature(REPO_MESSAGE.encode(), signature, repo_public_key):
-                logger.error("Ligacao comprometida!")
-                exit(1)
-            print(f"Sujeito '{username}' adicionado com sucesso à organização.")
-        else:
-            print(f"Erro ao adicionar sujeito: {response.status_code} - {response.text}")
-            sys.exit(1)
+        logger.info(f"Sujeito '{username}' adicionado com sucesso à organização.")
 
     except Exception as e:
         print(f"Erro ao adicionar sujeito: {e}")
