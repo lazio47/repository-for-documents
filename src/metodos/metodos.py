@@ -324,9 +324,7 @@ def rep_add_subject(state, session_file, username, name, email, credentials_file
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -380,9 +378,7 @@ def rep_change_subject_status(state, session_file, username, action):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -429,9 +425,7 @@ def rep_add_role(state, session_file, role):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -471,9 +465,7 @@ def rep_change_role_status(state, session_file, role, action):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -522,9 +514,7 @@ def rep_modify_role(state, session_file, role, action, target):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -592,9 +582,7 @@ def rep_add_doc(state, session_file, document_name, file_path):
 
         file_content_b64 = base64.b64encode(file_content).decode("utf-8")
         
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -635,16 +623,9 @@ def rep_add_doc(state, session_file, document_name, file_path):
 
 def rep_get_doc_metadata(state, session_file, document_name, metadata_file=None):
     try:
-        session_data = load_session(session_file)
-        encrypted_session = session_data.get("encrypted_session")
-        session_key = session_data.get("key")  # A chave simétrica da sessão
-        if not encrypted_session or not session_key:
-            print("Erro: Sessão criptografada ou chave simétrica ausente no arquivo.")
-            sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -743,9 +724,7 @@ def rep_delete_doc(state, session_file, document_name):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -794,9 +773,7 @@ def rep_acl_doc(state, session_file, document_name, operation, role, permission)
             print("Erro: Operação inválida. Use '+' para adicionar ou '-' para remover.")
             sys.exit(1)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -843,9 +820,7 @@ def rep_assume_role(state, session_file, role):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -886,9 +861,7 @@ def rep_drop_role(state, session_file, role):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -930,9 +903,7 @@ def rep_list_roles(state, session_file):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -976,9 +947,7 @@ def rep_list_subjects(state, session_file, username=None):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -1029,9 +998,7 @@ def rep_list_role_subjects(state, session_file, role):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -1076,9 +1043,7 @@ def rep_list_subject_roles(state, session_file, username):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -1123,9 +1088,7 @@ def rep_list_role_permissions(state, session_file, role):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -1170,9 +1133,7 @@ def rep_list_permission_roles(state, session_file, permission):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
@@ -1223,9 +1184,7 @@ def rep_list_docs(state, session_file, filters=None):
     try:
         session_data, encrypted_session = load_session(session_file)
 
-        private_key_base64 = session_data["private_key"]
-        private_key_bytes = base64.b64decode(private_key_base64)
-        private_key = load_pem_private_key(private_key_bytes, password=None)
+        private_key = load_private_key(session_data)
 
         public_key_pem = session_data["public_key"]
 
