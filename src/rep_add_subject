@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# rep_add_subject <session file> <username> <name> <email> <credentials file>
+if [ $# -ne 5 ]; then
+    echo "Uso: rep_add_subject <session file> <username> <name> <email> <credentials file>"
+    exit 1
+fi
+
+python3 client.py -c rep_add_subject "$1" "$2" "$3" "$4" "$5"
