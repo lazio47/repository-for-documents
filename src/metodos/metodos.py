@@ -4,20 +4,20 @@ import os
 import sys
 import json
 import time
-from venv import logger
 import requests
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives import hashes
+from venv import logger
+from cryptography.hazmat.primitives import serialization, hashes, padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from utils.cryptography_utils import *
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 
-REPO_MESSAGE = f"sou o repositorio"
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from utils.cryptography_utils import *
+from utils.auxi import *
+
+REPO_MESSAGE = "sou o repositorio"
 
 # Métodos para executar os comandos
 def rep_subject_credentials(password, credentials_file):
@@ -322,12 +322,7 @@ def rep_get_file(state, file_handle, output_file=None):
 
 def rep_add_subject(state, session_file, username, name, email, credentials_file):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -383,12 +378,7 @@ def rep_add_subject(state, session_file, username, name, email, credentials_file
 
 def rep_change_subject_status(state, session_file, username, action):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -437,12 +427,7 @@ def rep_activate_subject(state, session_file, username):
 
 def rep_add_role(state, session_file, role):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -484,12 +469,7 @@ def rep_add_role(state, session_file, role):
 
 def rep_change_role_status(state, session_file, role, action):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -540,12 +520,7 @@ def rep_reactivate_role(state, session_file, role):
 
 def rep_modify_role(state, session_file, role, action, target):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -606,12 +581,7 @@ def rep_remove_permission_from_role(state, session_file, role, permission):
 
 def rep_add_doc(state, session_file, document_name, file_path):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         try:
             with open(file_path, "rb") as f:
@@ -665,13 +635,12 @@ def rep_add_doc(state, session_file, document_name, file_path):
 
 def rep_get_doc_metadata(state, session_file, document_name, metadata_file=None):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            session_key = session_data.get("key")  # A chave simétrica da sessão
-            if not encrypted_session or not session_key:
-                print("Erro: Sessão criptografada ou chave simétrica ausente no arquivo.")
-                sys.exit(1)
+        session_data = load_session(session_file)
+        encrypted_session = session_data.get("encrypted_session")
+        session_key = session_data.get("key")  # A chave simétrica da sessão
+        if not encrypted_session or not session_key:
+            print("Erro: Sessão criptografada ou chave simétrica ausente no arquivo.")
+            sys.exit(1)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -741,7 +710,7 @@ def rep_get_doc_metadata(state, session_file, document_name, metadata_file=None)
 
 def rep_get_doc_file(state, session_file, document_name, output_file=None):
     try:
-        restricted_metadata_file = "restricted_metadata_temp.json"  # Arquivo temporário para metadados restritos
+        restricted_metadata_file = "restricted_metadata_temp.json"  # ficheiro temporário para metadados restritos
         rep_get_doc_metadata(state, session_file, document_name, metadata_file=restricted_metadata_file)
 
         if not os.path.exists(restricted_metadata_file):
@@ -772,12 +741,7 @@ def rep_get_doc_file(state, session_file, document_name, output_file=None):
 
 def rep_delete_doc(state, session_file, document_name):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -824,12 +788,7 @@ def rep_delete_doc(state, session_file, document_name):
 
 def rep_acl_doc(state, session_file, document_name, operation, role, permission):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         if operation not in ["+", "-"]:
             print("Erro: Operação inválida. Use '+' para adicionar ou '-' para remover.")
@@ -882,12 +841,7 @@ def rep_acl_doc(state, session_file, document_name, operation, role, permission)
 
 def rep_assume_role(state, session_file, role):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -930,12 +884,7 @@ def rep_assume_role(state, session_file, role):
 
 def rep_drop_role(state, session_file, role):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -979,12 +928,7 @@ def rep_drop_role(state, session_file, role):
 
 def rep_list_roles(state, session_file):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1030,12 +974,7 @@ def rep_list_roles(state, session_file):
 
 def rep_list_subjects(state, session_file, username=None):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1088,12 +1027,7 @@ def rep_list_subjects(state, session_file, username=None):
 
 def rep_list_role_subjects(state, session_file, role):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1140,12 +1074,7 @@ def rep_list_role_subjects(state, session_file, role):
 
 def rep_list_subject_roles(state, session_file, username):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1192,12 +1121,7 @@ def rep_list_subject_roles(state, session_file, username):
 
 def rep_list_role_permissions(state, session_file, role):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1244,12 +1168,7 @@ def rep_list_role_permissions(state, session_file, role):
 
 def rep_list_permission_roles(state, session_file, permission):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
@@ -1302,12 +1221,7 @@ def rep_list_permission_roles(state, session_file, permission):
 
 def rep_list_docs(state, session_file, filters=None):
     try:
-        with open(session_file, "r") as f:
-            session_data = json.load(f)
-            encrypted_session = session_data.get("encrypted_session")
-            if not encrypted_session:
-                print("Erro: Sessão criptografada ausente no arquivo.")
-                sys.exit(1)
+        session_data, encrypted_session = load_session(session_file)
 
         private_key_base64 = session_data["private_key"]
         private_key_bytes = base64.b64decode(private_key_base64)
