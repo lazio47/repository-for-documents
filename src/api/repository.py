@@ -436,7 +436,7 @@ def list_subjects():
 
         signature = base64.b64decode(get_assinatura(MESSAGE, repo_private_key))
         encrypted_response = hybrid_encrypt({"subjects": subjects, "signature": base64.b64encode(signature).decode()}, client_public_key_pem)
-        return json.dumps({"encrypted_response": encrypted_response}), 200
+        return json.dumps({"encrypted_response": encrypted_response}), 201
 
     except Exception as e:
         return json.dumps({"error": f"Erro ao listar sujeitos: {e}"}), 500

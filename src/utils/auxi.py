@@ -40,3 +40,26 @@ def load_session(session_file):
         sys.exit(1)
     
     return session_data, encrypted_session
+
+def process_metadata(decrypted_metadata, metadata_file):
+    public_metadata = decrypted_metadata.get("public_metadata")
+    restricted_metadata = decrypted_metadata.get("restricted_metadata")
+
+    if metadata_file:
+        restricted_metadata['file_handle'] = public_metadata['file_handle']
+        with open(metadata_file, "w") as f:
+            json.dump(restricted_metadata, f, indent=4)
+    else:
+        if public_metadata:
+            print("Metadados Públicos do Documento:")
+            print(json.dumps(public_metadata, indent=4))
+        else:
+            print("Erro: Metadados públicos ausentes.")
+            sys.exit(1)
+
+        if restricted_metadata:
+            print("Metadados Restritos do Documento:")
+            print(json.dumps(restricted_metadata, indent=4))
+        else:
+            print("Metadados restritos ausentes ou sem permissões.")
+            sys.exit(1)
