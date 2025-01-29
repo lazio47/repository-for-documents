@@ -62,7 +62,6 @@ def save_master_key(key):
 
 def load_master_key():
     if not os.path.exists(MASTER_KEY_FILE):
-        print("Gerando nova master key...")
         master_key = derive_master_key()
         save_master_key(master_key)
 
